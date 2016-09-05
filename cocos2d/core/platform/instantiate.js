@@ -46,21 +46,15 @@ var _isDomNode = require('./utils').isDomNode;
  */
 function instantiate (original) {
     if (typeof original !== 'object' || Array.isArray(original)) {
-        if (CC_DEV) {
-            cc.error('The thing you want to instantiate must be an object');
-        }
+        cc.error('The thing you want to instantiate must be an object');
         return null;
     }
     if (!original) {
-        if (CC_DEV) {
-            cc.error('The thing you want to instantiate is nil');
-        }
+        cc.error('The thing you want to instantiate is nil');
         return null;
     }
     if (original instanceof CCObject && !original.isValid) {
-        if (CC_DEV) {
-            cc.error('The thing you want to instantiate is destroyed');
-        }
+        cc.error('The thing you want to instantiate is destroyed');
         return null;
     }
 
@@ -75,9 +69,7 @@ function instantiate (original) {
         }
         else if (original instanceof cc.Asset) {
             // 不允许用通用方案实例化资源
-            if (CC_DEV) {
-                cc.error('The instantiate method for given asset do not implemented');
-            }
+            cc.error('The instantiate method for given asset do not implemented');
             return null;
         }
     }
@@ -111,21 +103,12 @@ function doInstantiate (obj, parent) {
         cc.error('Can not instantiate array');
         return null;
     }
-    if (!CC_JSB && _isDomNode && _isDomNode(obj)) {
+    if (_isDomNode && _isDomNode(obj)) {
         cc.error('Can not instantiate DOM element');
         return null;
     }
 
-    var clone;
-    if (obj._iN$t) {
-        clone = obj._iN$t;
-    }
-    else {
-        // User can specify an existing object by assigning the "_iN$t" property
-        var klass = obj.constructor;
-        clone = new klass();
-    }
-    enumerateObject(obj, clone, parent);
+    var clone = enumerateObject(obj, parent);
 
     for (var i = 0, len = objsToClearTmpVar.length; i < len; ++i) {
         objsToClearTmpVar[i]._iN$t = null;
@@ -135,10 +118,14 @@ function doInstantiate (obj, parent) {
     return clone;
 }
 
-// @param {Object} obj - The object to instantiate, typeof must be 'object' and should not be an array.
-function enumerateObject (obj, clone, parent) {
+///**
+// * @param {Object} obj - The object to instantiate, typeof must be 'object' and should not be an array.
+// * @return {Object} - the instantiated instance
+// */
+var enumerateObject = function (obj, parent) {
     var value, type, key;
     var klass = obj.constructor;
+    var clone = new klass();
     obj._iN$t = clone;
     objsToClearTmpVar.push(obj);
     if (cc.Class._isCCClass(klass)) {
@@ -188,7 +175,8 @@ function enumerateObject (obj, clone, parent) {
     if (obj instanceof CCObject) {
         clone._objFlags &= PersistentMask;
     }
-}
+    return clone;
+};
 
 ///**
 // * @return {Object} - the original non-nil object, typeof must be 'object'
@@ -260,9 +248,7 @@ function instantiateObj (obj, parent, ownerObj, ownerKey) {
             // unknown type
             return obj;
         }
-        clone = new ctor();
-        enumerateObject(obj, clone, parent);
-        return clone;
+        return enumerateObject(obj, parent);
     }
 }
 

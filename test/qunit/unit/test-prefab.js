@@ -38,7 +38,7 @@
     });
 
     var UUID = '19851210';
-    var DEBUG_SERIALIZED_PREFAB = 0 && !isPhantomJS;
+    var OUTPUT_PREFAB = 0;
 
     var parent = new cc.Node('parent');
     var child = new cc.Node('child');
@@ -60,29 +60,25 @@
 
     (function savePrefab () {
         prefab = _Scene.PrefabUtils.createPrefabFrom(parent);
-        prefab._uuid = UUID;
-        //_Scene.PrefabUtils.setPrefabAsset(parent, prefab);
+        _Scene.PrefabUtils.savePrefabUuid(parent, UUID);
 
-        // 重新生成已经加载好的 prefab，去除类型，去除 runtime node
+        // 已经加载好的 prefab，去除类型，去除 runtime node
         prefabJson = Editor.serialize(prefab);
-        if (DEBUG_SERIALIZED_PREFAB) {
+        if (OUTPUT_PREFAB) {
             console.log(prefabJson);
         }
         prefab = cc.deserialize(prefabJson);
         prefab._uuid = UUID;
     })();
 
-    test('prefab info', function () {
+    test('create prefab', function () {
         var prefabInfo = parent._prefab;
 
         ok(prefab !== null, "prefab asset should be created");
         ok(prefabInfo !== null, "wrapper should preserve the prefab info");
         ok(prefabInfo.asset instanceof cc.Asset, "the prefab asset should be preserved");
-        strictEqual(prefabInfo.root, parent,"the parent prefab's root should be itself");
         strictEqual(prefabInfo.asset._uuid, UUID, "the prefab asset should be preserved");
-    });
 
-    test('saved prefab node', function () {
         var nodeToSave = prefab.data;
         ok(nodeToSave instanceof cc.Node, 'Checking prefab data');
         ok(!nodeToSave._id, 'The id in prefab data should be cleared');
@@ -102,11 +98,6 @@
 
         child2.parent = null;
         strictEqual(child2._prefab, null, 'Prefab info should be cleared if detached from parent');
-    });
-
-    test('asset reference in prefab info', function () {
-        var node = prefab.data;
-        strictEqual(node._prefab.asset, prefab, "should reference to the main asset directly");
     });
 
     test('instantiate prefab', function () {
@@ -172,12 +163,9 @@
         var testNode = cc.instantiate(prefab);
         var testChild = testNode.children[0];
 
-        testNode.x += 1;
         testNode.scale = 0;
         testNode.removeComponent(TestScript);
         testNode.children[1].parent = null;
-
-        testChild.x += 1;
         testChild.scale = cc.Vec2.ZERO;
         testChild.addComponent(TestScript);
 
@@ -189,12 +177,10 @@
         newNode2.setSiblingIndex(0);
 
         _Scene.PrefabUtils.revertPrefab(testNode, function () {
-            ok(testNode.x != prefab.data.x, 'Should not revert root position');
             ok(testNode.getScaleX() === 123 && testNode.getScaleY() === 432, 'Revert property of the parent node');
             ok(testNode.getComponent(TestScript).constructor === TestScript, 'Restore removed component');
-
-            ok(testChild.x === prefab.data.children[0].x, 'Revert child position');
-            ok(testChild.getScaleX() === 22 && testChild.getScaleY() === 11, 'Revert child node');
+            var c = testNode.children[0];
+            ok(c.getScaleX() === 22 && c.getScaleY() === 11, 'Revert child node');
             ok(testChild.getComponent(TestScript) == null, 'Remove added component');
 
             ok(testNode.getComponent(TestScript).target === testChild, 'Should redirect reference to scene node');
