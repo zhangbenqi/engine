@@ -13,6 +13,8 @@ if (CC_JSB) {
 }
 else {
     var urlAppendTimestamp = require('./utils').urlAppendTimestamp;
+    //BQ add
+    var urlAppendCrc = require('./utils').urlAppendCrc;
 
     module.exports = function (item, callback) {
         var url = item.url,
@@ -20,6 +22,8 @@ else {
             errInfo = 'Load ' + url + ' failed!',
             navigator = window.navigator;
 
+        //BQ add
+        url = urlAppendCrc(url);
         url = urlAppendTimestamp(url);
 
         xhr.open('GET', url, true);

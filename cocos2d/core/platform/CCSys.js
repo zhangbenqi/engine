@@ -711,12 +711,14 @@ else {
                 _supportWebGL = true;
             }
 
-            if (_supportWebGL && sys.os === sys.OS_IOS) {
-                // Not activating WebGL in iOS UIWebView because it may crash when entering background
-                if (!window.indexedDB) {
-                    _supportWebGL = false;
-                }
-            }
+            //modify bq 强制支持webGl
+            // if (_supportWebGL && sys.os === sys.OS_IOS) {
+            //     // Not activating WebGL in iOS UIWebView because it may crash when entering background
+            //     if (!window.indexedDB) {
+            //         _supportWebGL = false;
+            //     }
+            // }
+            console.log("bq modify");
 
             if (_supportWebGL && sys.os === sys.OS_ANDROID) {
                 var browserVer = parseFloat(sys.browserVersion);

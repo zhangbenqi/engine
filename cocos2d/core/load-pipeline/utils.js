@@ -22,5 +22,21 @@ module.exports = {
                 url += '?_t=' + (new Date() - 0);
         }
         return url;
-    }
+    },
+
+    //BQ add
+    urlAppendCrc: function(url) {
+        var newUrl = url.substr(url.lastIndexOf('/')+1);
+        if(window.urlCrc) {
+            // console.log("1111 newUrl = "+newUrl)
+            var crc = window.urlCrc[newUrl];
+            if(crc && crc.length > 0) {
+                // console.log("crc = "+crc);
+                url += "?v=" + crc;
+            }
+        }
+        console.log("url = "+url);
+        return url;
+    },
+
 };
