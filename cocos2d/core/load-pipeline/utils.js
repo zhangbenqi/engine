@@ -32,10 +32,13 @@ module.exports = {
             var crc = window.urlCrc[newUrl];
             if(crc && crc.length > 0) {
                 // console.log("crc = "+crc);
-                url += "?v=" + crc;
+                if(_noCacheRex.test(url))
+                    url += "&_v=" + crc;
+                else
+                    url += "?v=" + crc;
             }
         }
-        console.log("url = "+url);
+        // console.log("url = "+url);
         return url;
     },
 
