@@ -12947,7 +12947,7 @@
                     if (!this._edTxt) {
                         return;
                     }
-                    if ("" !== this._edTxt.value) {
+                    if (this._edTxt) {
                         this._edTxt.style.fontFamily = this._edFontName;
                         this._edTxt.style.fontSize = this._edFontSize + "px";
                     }

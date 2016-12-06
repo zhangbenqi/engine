@@ -1097,7 +1097,7 @@ _ccsg.EditBox.KeyboardReturnType = KeyboardReturnType;
     proto._updateDOMFontStyle = function() {
         if(!this._edTxt) return;
 
-        if (this._edTxt.value !== '') {
+        if (this._edTxt/*.value !== ''*/) {
             this._edTxt.style.fontFamily = this._edFontName;
             this._edTxt.style.fontSize = this._edFontSize + 'px';
         }
