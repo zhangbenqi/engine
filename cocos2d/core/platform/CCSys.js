@@ -711,7 +711,7 @@ else {
                 _supportWebGL = true;
             }
 
-            //modify bq 强制支持webGl
+            //modify [bq] 强制支持webGl
             // if (_supportWebGL && sys.os === sys.OS_IOS) {
             //     // Not activating WebGL in iOS UIWebView because it may crash when entering background
             //     if (!window.indexedDB) {

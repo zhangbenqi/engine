@@ -38192,6 +38192,7 @@
             _viewName: "",
             _resizeCallback: null,
             _orientationChanging: true,
+            _screenChange: true,
             _scaleX: 1,
             _originalScaleX: 1,
             _scaleY: 1,
@@ -38289,12 +38290,15 @@
                     this.setDesignResolutionSize(designWidth, designHeight, this._resolutionPolicy);
                 }
             },
+            enableScreenChange: function(screenChange) {
+                this._screenChange = screenChange;
+            },
             _initFrameSize: function() {
                 var locFrameSize = this._frameSize;
                 var w = __BrowserGetter.availWidth(cc.game.frame);
                 var h = __BrowserGetter.availHeight(cc.game.frame);
                 var isLandscape = w >= h;
-                if (!this._orientationChanging || !cc.sys.isMobile || isLandscape && this._orientation & cc.macro.ORIENTATION_LANDSCAPE || !isLandscape && this._orientation & cc.macro.ORIENTATION_PORTRAIT) {
+                if (!this._screenChange || !this._orientationChanging || !cc.sys.isMobile || isLandscape && this._orientation & cc.macro.ORIENTATION_LANDSCAPE || !isLandscape && this._orientation & cc.macro.ORIENTATION_PORTRAIT) {
                     locFrameSize.width = w;
                     locFrameSize.height = h;
                     cc.container.style["-webkit-transform"] = "rotate(0deg)";

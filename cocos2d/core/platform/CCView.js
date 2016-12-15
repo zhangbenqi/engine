@@ -128,6 +128,7 @@ var View = cc._Class.extend({
     _resizeCallback: null,
 
     _orientationChanging: true,
+    _screenChange: true,// add [bq]
 
     _scaleX: 1,
     _originalScaleX: 1,
@@ -286,9 +287,9 @@ var View = cc._Class.extend({
 
     /**
      * Sets the orientation of the game, it can be landscape, portrait or auto.
-     * When set it to landscape or portrait, and screen w/h ratio doesn't fit, 
+     * When set it to landscape or portrait, and screen w/h ratio doesn't fit,
      * cc.view will automatically rotate the game canvas using CSS.
-     * Note that this function doesn't have any effect in native, 
+     * Note that this function doesn't have any effect in native,
      * in native, you need to set the application orientation in native project settings
      * @method setOrientation
      * @param {Number} orientation - Possible values: cc.macro.ORIENTATION_LANDSCAPE | cc.macro.ORIENTATION_PORTRAIT | cc.macro.ORIENTATION_AUTO
@@ -303,14 +304,20 @@ var View = cc._Class.extend({
         }
     },
 
+    //add [bq]
+    enableScreenChange: function(screenChange) {
+        this._screenChange = screenChange;
+    },
+
+
     _initFrameSize: function () {
         var locFrameSize = this._frameSize;
         var w = __BrowserGetter.availWidth(cc.game.frame);
         var h = __BrowserGetter.availHeight(cc.game.frame);
         var isLandscape = w >= h;
 
-        if (CC_EDITOR || !this._orientationChanging || !cc.sys.isMobile ||
-            (isLandscape && this._orientation & cc.macro.ORIENTATION_LANDSCAPE) || 
+        if (CC_EDITOR || !this._screenChange || !this._orientationChanging || !cc.sys.isMobile ||
+            (isLandscape && this._orientation & cc.macro.ORIENTATION_LANDSCAPE) ||
             (!isLandscape && this._orientation & cc.macro.ORIENTATION_PORTRAIT)) {
             locFrameSize.width = w;
             locFrameSize.height = h;
