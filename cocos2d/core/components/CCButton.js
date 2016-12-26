@@ -628,7 +628,7 @@ var Button = cc.Class({
     },
 
     _updateDisabledState: function () {
-        if(this._sprite) {
+        if(this._sprite && !this._sprite.isGray) {
             this._sprite._sgNode.setState(0);
         }
         if(this.enableAutoGrayEffect && this.transition !== Transition.COLOR) {
