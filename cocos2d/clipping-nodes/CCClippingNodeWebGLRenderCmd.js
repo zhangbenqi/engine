@@ -58,7 +58,7 @@ proto.initStencilBits = function(){
     if (cc.ClippingNode.WebGLRenderCmd._init_once) {
         cc.ClippingNode.stencilBits = cc._renderContext.getParameter(cc._renderContext.STENCIL_BITS);
         if (cc.ClippingNode.stencilBits <= 0)
-            cc.log("Stencil buffer is not enabled.");
+            cc.logID(6301);
         cc.ClippingNode.WebGLRenderCmd._init_once = false;
     }
 };
@@ -97,7 +97,7 @@ proto.visit = function(parentCmd){
     if (cc.ClippingNode.WebGLRenderCmd._layer + 1 === cc.ClippingNode.stencilBits) {
         cc.ClippingNode.WebGLRenderCmd._visit_once = true;
         if (cc.ClippingNode.WebGLRenderCmd._visit_once) {
-            cc.log("Nesting more than " + cc.ClippingNode.stencilBits + "stencils is not supported. Everything will be drawn without stencil for this node and its children.");
+            cc.logID(6302, cc.ClippingNode.stencilBits);
             cc.ClippingNode.WebGLRenderCmd._visit_once = false;
         }
         // draw everything, as if there were no stencil
@@ -145,6 +145,15 @@ proto.setStencil = function(stencil){
         node._stencil._parent = node;
 };
 
+// should reset program used by _stencil
+proto.resetProgramByStencil = function () {
+    var node = this._node;
+    if (node._stencil) {
+        var program = node._originStencilProgram;
+        setProgram(node._stencil, program);
+    }
+};
+
 proto._onBeforeVisit = function(ctx){
     var gl = ctx || cc._renderContext, node = this._node;
     cc.ClippingNode.WebGLRenderCmd._layer++;
@@ -175,8 +184,8 @@ proto._onBeforeVisit = function(ctx){
         var program = cc.shaderCache.programForKey(cc.macro.SHADER_POSITION_TEXTURECOLORALPHATEST);
         // set our alphaThreshold
         cc.gl.useProgram(program.getProgram());
-        program.setUniformLocationWith1f(cc.UNIFORM_ALPHA_TEST_VALUE_S, node.alphaThreshold);
-        program.setUniformLocationWithMatrix4fv(cc.UNIFORM_MVMATRIX_S, cc.renderer.mat4Identity.mat);
+        program.setUniformLocationWith1f(cc.macro.UNIFORM_ALPHA_TEST_VALUE_S, node.alphaThreshold);
+        program.setUniformLocationWithMatrix4fv(cc.macro.UNIFORM_MVMATRIX_S, cc.renderer.mat4Identity.mat);
         setProgram(node._stencil, program);
     }
 };

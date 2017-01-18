@@ -133,7 +133,7 @@ cc.eventManager.addListener = function(listener, nodeOrPriority) {
 
     if (typeof nodeOrPriority === 'number') {
         if (nodeOrPriority === 0) {
-            cc.log(cc._LogInfos.EventManager.addListener);
+            cc.logID(3500);
             return;
         }
 
@@ -144,7 +144,7 @@ cc.eventManager.addListener = function(listener, nodeOrPriority) {
             node = nodeOrPriority._sgNode;
         }
         else if (!(node instanceof _ccsg.Node)) {
-            cc.warn(cc._LogInfos.EventManager.addListener_5);
+            cc.warnID(3506);
             return;
         }
         cc.eventManager.addEventListenerWithSceneGraphPriority(listener, node);
@@ -162,7 +162,7 @@ cc.eventManager.removeListeners = function (target, recursive) {
         this._removeListeners(target, recursive || false);
     }
     else {
-        cc.warn(cc._LogInfos.EventManager.addListener_5);
+        cc.warnID(3506);
     }
 };
 cc.eventManager._pauseTarget = cc.eventManager.pauseTarget;
@@ -173,7 +173,7 @@ cc.eventManager.pauseTarget = function (target, recursive) {
         sgTarget = target._sgNode;
     }
     else if (!(sgTarget instanceof _ccsg.Node)) {
-        cc.warn(cc._LogInfos.EventManager.addListener_5);
+        cc.warnID(3506);
         return;
     }
 
@@ -196,11 +196,24 @@ cc.eventManager.resumeTarget = function (target, recursive) {
         target = target._sgNode;
     }
     else if (!(target instanceof _ccsg.Node)) {
-        cc.warn(cc._LogInfos.EventManager.addListener_5);
+        cc.warnID(3506);
         return;
     }
     this._resumeTarget(target, recursive || false);
 };
+
+cc._EventListenerKeyboard = cc.EventListenerKeyboard;
+cc._EventListenerKeyboard.LISTENER_ID = "__cc_keyboard";
+cc._EventListenerAcceleration = cc.EventListenerAcceleration;
+cc._EventListenerAcceleration.LISTENER_ID = "__cc_acceleration";
+cc._EventListenerFocus = cc.EventListenerFocus;
+cc._EventListenerFocus.LISTENER_ID = "__cc_focus_event";
+cc._EventListenerTouchAllAtOnce = cc.EventListenerTouchAllAtOnce;
+cc._EventListenerTouchAllAtOnce.LISTENER_ID = "__cc_touch_all_at_once";
+cc._EventListenerTouchOneByOne = cc.EventListenerTouchOneByOne;
+cc._EventListenerTouchOneByOne.LISTENER_ID = "__cc_touch_one_by_one";
+cc._EventListenerMouse = cc.EventListenerMouse;
+cc._EventListenerMouse.LISTENER_ID = "__cc_mouse";
 
 cc.js.mixin(cc.EventTouch.prototype, {
     setLocation: function (x, y) {

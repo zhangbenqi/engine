@@ -133,7 +133,9 @@ function align (node, widget) {
         }
         if (widget.isStretchWidth) {
             width = localRight - localLeft;
-            node.width = width / scaleX;
+            if (scaleX !== 0) {
+                node.width = width / scaleX;
+            }
             x = localLeft + anchorX * width;
         }
         else {
@@ -188,7 +190,9 @@ function align (node, widget) {
         }
         if (widget.isStretchHeight) {
             height = localTop - localBottom;
-            node.height = height / scaleY;
+            if (scaleY !== 0) {
+                node.height = height / scaleY;
+            }
             y = localBottom + anchorY * height;
         }
         else {
@@ -223,7 +227,7 @@ function visitNode (node) {
             if (target) {
                 var isParent = node !== target && node.isChildOf(target);
                 if (!isParent) {
-                    cc.error('Widget target must be one of the parent nodes of it');
+                    cc.errorID(6500);
                     widget._target = null;
                 }
             }

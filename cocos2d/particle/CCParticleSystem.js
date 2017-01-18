@@ -101,7 +101,8 @@ var properties = {
             }
             cc.engine.repaintInEditMode();
         },
-        animatable: false
+        animatable: false,
+        tooltip: 'i18n:COMPONENT.particle_system.preview'
     },
 
     /**
@@ -118,7 +119,7 @@ var properties = {
         },
         set: function (value) {
             if (CC_EDITOR && !value && !this._file) {
-                return cc.warn('Custom should not be false if file is not specified.');
+                return cc.warnID(6000);
             }
             if (this._custom !== value) {
                 this._custom = value;
@@ -134,7 +135,8 @@ var properties = {
                 }
             }
         },
-        animatable: false
+        animatable: false,
+        tooltip: 'i18n:COMPONENT.particle_system.custom'
     },
 
     /**
@@ -167,7 +169,8 @@ var properties = {
             }
         },
         animatable: false,
-        url: cc.ParticleAsset
+        url: cc.ParticleAsset,
+        tooltip: 'i18n:COMPONENT.particle_system.file'
     },
 
     /**
@@ -191,7 +194,8 @@ var properties = {
                 this._applyFile();
             }
         },
-        url: cc.Texture2D
+        url: cc.Texture2D,
+        tooltip: 'i18n:COMPONENT.particle_system.texture'
     },
 
     /**
@@ -206,7 +210,8 @@ var properties = {
         set: function (value) {
             this._sgNode.particleCount = value;
         },
-        visible: false
+        visible: false,
+        tooltip: 'i18n:COMPONENT.particle_system.particleCount'
     },
 
     /**
@@ -226,7 +231,8 @@ var properties = {
             this._sgNode.setBlendFunc(this._blendFunc);
         },
         animatable: false,
-        type:BlendFactor
+        type:BlendFactor,
+        tooltip: 'i18n:COMPONENT.particle_system.srcBlendFactor'
     },
 
     /**
@@ -246,7 +252,8 @@ var properties = {
             this._sgNode.setBlendFunc(this._blendFunc);
         },
         animatable: false,
-        type: BlendFactor
+        type: BlendFactor,
+        tooltip: 'i18n:COMPONENT.particle_system.dstBlendFactor'
     },
 
     /**
@@ -276,7 +283,8 @@ var properties = {
                 }
             }
         },
-        animatable: false
+        animatable: false,
+        tooltip: 'i18n:COMPONENT.particle_system.autoRemoveOnFinish'
     },
 
     /**
@@ -603,7 +611,7 @@ var CustomProps = (function () {
                         this._sgNode[prop] = value;
                     }
                     else {
-                        cc.error('The new %s must not be NaN', prop);
+                        cc.errorID(6001, prop);
                     }
                 };
             }
@@ -889,7 +897,6 @@ var ParticleSystem = cc.Class({
     // PRIVATE METHODS
 
     _applyFile: function () {
-        var sgNode = this._sgNode;
         var file = this._file;
         if (file) {
             var self = this;
@@ -901,6 +908,7 @@ var ParticleSystem = cc.Class({
                     return;
                 }
 
+                var sgNode = self._sgNode;
                 sgNode.particleCount = 0;
 
                 var active = sgNode.isActive();
@@ -910,6 +918,10 @@ var ParticleSystem = cc.Class({
                 // so use the texutreUuid instead of textureImageData
                 if (content.textureUuid) {
                     cc.AssetLibrary.queryAssetInfo(content.textureUuid, function (err, url, raw) {
+                        if (err) {
+                            cc.error(err);
+                            return;
+                        }
                         self.texture = url;
                     });
                 }

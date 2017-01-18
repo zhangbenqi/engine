@@ -38,9 +38,13 @@ var BitmapFont = cc.Class({
     extends: cc.Font,
 
     properties: {
-        texture: {
-            default: '',
-            url: cc.Texture2D
+        fntDataStr: {
+            default: ''
+        },
+
+        spriteFrame: {
+            default: null,
+            type: cc.SpriteFrame
         },
 
         fontSize: {

@@ -50,11 +50,10 @@ var Prefab = cc.Class({
         }
     },
 
-    createNode: function (cb) {
-        if (CC_EDITOR) {
-            var node = cc.instantiate(this);
-            cb(null, node);
-        }
+    createNode: CC_EDITOR && function (cb) {
+        var node = cc.instantiate(this);
+        node.name = this.name;
+        cb(null, node);
     },
 
     /**
@@ -78,7 +77,7 @@ var Prefab = cc.Class({
         }
         else {
             // temp guard code
-            cc.warn('internal error: _prefab is undefined');
+            cc.warnID(3700);
         }
         if (!this._createFunction) {
             this.compileCreateFunction();

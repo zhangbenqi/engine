@@ -72,7 +72,7 @@ var AssetLibrary = {
         // var readMainCache = typeof (options && options.readMainCache) !== 'undefined' ? readMainCache : true;
         // var writeMainCache = typeof (options && options.writeMainCache) !== 'undefined' ? writeMainCache : true;
         var item = {
-            id: uuid,
+            uuid: uuid,
             type: 'uuid'
         };
         if (options && options.existingAsset) {
@@ -88,11 +88,13 @@ var AssetLibrary = {
                         Editor.error('Sorry, the scene data of "%s" is corrupted!', uuid);
                     }
                     else {
+                        // We know scene is not a raw asset, so we can pass uuid to this API directly
                         asset.scene.dependAssets = AutoReleaseUtils.getDependsRecursively(uuid);
                     }
                 }
                 if (CC_EDITOR || isScene(asset)) {
-                    Loader.removeItem(uuid);
+                    var id = cc.AssetLibrary._getAssetInfoInRuntime(uuid).url;
+                    Loader.removeItem(id);
                 }
             }
             if (callback) {
@@ -120,27 +122,35 @@ var AssetLibrary = {
                     }
                 }
                 else {
-                    callback(new Error('Can not get asset url by uuid "' + uuid + '", the asset may be deleted.'));
+                    var error = new Error('Can not get asset url by uuid "' + uuid + '", the asset may be deleted.');
+                    error.errorCode = 'db.NOTFOUND';
+                    callback(error);
                 }
             });
         }
     },
 
-    _getAssetInfoInRuntime: function (uuid) {
+    _getAssetInfoInRuntime: function (uuid, result) {
+        if (!result) {
+            result = {url: null, raw: false};
+        }
         var info = _uuidToRawAsset[uuid];
         if (info && !cc.isChildClassOf(info.type, cc.Asset)) {
-            return {
-                url: _rawAssetsBase + info.url,
-                raw: true,
-            };
+            result.url = _rawAssetsBase + info.url;
+            result.raw = true;
         }
         else {
-            var url = this.getImportedDir(uuid) + '/' + uuid + '.json';
-            return {
-                url: url,
-                raw: false,
-            };
+            result.url = this.getImportedDir(uuid) + '/' + uuid + '.json';
         }
+        return result;
+    },
+
+    _getAssetUrl: function (uuid) {
+        var info = _uuidToRawAsset[uuid];
+        if (info) {
+            return _rawAssetsBase + info.url;
+        }
+        return null;
     },
 
     /**
@@ -199,7 +209,7 @@ var AssetLibrary = {
     loadJson: function (json, callback) {
         var randomUuid = '' + ((new Date()).getTime() + Math.random());
         var item = {
-            id: randomUuid,
+            uuid: randomUuid,
             type: 'uuid',
             content: json,
             skips: [ Loader.downloader.id ]
@@ -210,10 +220,12 @@ var AssetLibrary = {
             }
             else {
                 if (asset.constructor === cc.SceneAsset) {
+                    // We know scene is not a raw asset, so we can pass uuid to this API directly
                     asset.scene.dependAssets = AutoReleaseUtils.getDependsRecursively(randomUuid);
                 }
                 if (CC_EDITOR || isScene(asset)) {
-                    Loader.removeItem(randomUuid);
+                    var id = cc.AssetLibrary._getAssetInfoInRuntime(randomUuid).url;
+                    Loader.removeItem(id);
                 }
             }
             asset._uuid = '';
@@ -248,7 +260,7 @@ var AssetLibrary = {
      */
     init: function (options) {
         if (CC_EDITOR && _libraryBase) {
-            cc.error('AssetLibrary has already been initialized!');
+            cc.errorID(6402);
             return;
         }
 
@@ -351,4 +363,4 @@ AssetLibrary._uuidToAsset = {};
 //    }
 //};
 
-cc.AssetLibrary = AssetLibrary;
+module.exports = cc.AssetLibrary = AssetLibrary;

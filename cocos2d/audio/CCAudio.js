@@ -89,6 +89,10 @@ Audio.State = {
             audio = this;
         var item = cc.loader.getItem(src);
 
+        if (!item) {
+            item = cc.loader.getItem(src + '?useDom=1');
+        }
+
         // If the resource does not exist
         if (!item) {
             return cc.loader.load(src, function (error) {
@@ -144,7 +148,6 @@ Audio.State = {
         this._state = Audio.State.PLAYING;
 
         if (this._audioType === Audio.Type.DOM && this._element.paused) {
-            this.stop();
             touchPlayList.push({ instance: this, offset: 0, audio: this._element });
         }
 
@@ -239,6 +242,10 @@ Audio.State = {
     });
     proto.__defineSetter__('src', function (string) {
         return this._src = string;
+    });
+
+    proto.__defineGetter__('paused', function () {
+        return this._element ? this._element.paused : true;
     });
 
     // setFinishCallback

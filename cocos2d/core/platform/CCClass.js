@@ -1,5 +1,5 @@
 ﻿/****************************************************************************
- Copyright (c) 2013-2016 Chukong Technologies Inc.
+ Copyright (c) 2013-2017 Chukong Technologies Inc.
 
  http://www.cocos.com
 
@@ -30,18 +30,13 @@ var _isPlainEmptyObj_DEV = Utils.isPlainEmptyObj_DEV;
 var _cloneable_DEV = Utils.cloneable_DEV;
 var Attr = require('./attribute');
 var getTypeChecker = Attr.getTypeChecker;
-var preprocessAttrs = require('./preprocess-attrs');
+var preprocess = require('./preprocess-class');
+var Misc = require('../utils/misc');
+require('./requiring-frame');
 
 var BUILTIN_ENTRIES = ['name', 'extends', 'mixins', 'ctor', 'properties', 'statics', 'editor'];
 
-var TYPO_TO_CORRECT = CC_DEV && {
-    extend: 'extends',
-    property: 'properties',
-    static: 'statics',
-    constructor: 'ctor'
-};
-
-var INVALID_STATICS = CC_DEV && ['name', '__ctors__', '__props__', 'arguments', 'call', 'apply', 'caller',
+var INVALID_STATICS_DEV = CC_DEV && ['name', '__ctors__', '__props__', 'arguments', 'call', 'apply', 'caller',
                        'length', 'prototype'];
 
 var deferredInitializer = {
@@ -80,7 +75,7 @@ var deferredInitializer = {
                     declareProperties(cls, name, properties, cls.$super, data.mixins);
                 }
                 else {
-                    cc.error('Properties function of "%s" should return an object!', name);
+                    cc.errorID(3633, name);
                 }
             }
             this.datas = null;
@@ -100,7 +95,7 @@ function appendProp (cls, name/*, isGetter*/) {
         //    return;
         //}
         if (name.indexOf('.') !== -1) {
-            cc.error('Disallow to use "." in property name');
+            cc.errorID(3634);
             return;
         }
     }
@@ -116,8 +111,7 @@ function defineProp (cls, className, propName, defaultValue, attrs) {
             if (Array.isArray(defaultValue)) {
                 // check array empty
                 if (defaultValue.length > 0) {
-                    cc.error('Default array must be empty, set default value of %s.%s to [], ' +
-                               'and initialize in "onLoad" or "ctor" please. (just like "this.%s = [...];")',
+                    cc.errorID(3635,
                         className, propName, propName);
                     return;
                 }
@@ -125,9 +119,7 @@ function defineProp (cls, className, propName, defaultValue, attrs) {
             else if (!_isPlainEmptyObj_DEV(defaultValue)) {
                 // check cloneable
                 if (!_cloneable_DEV(defaultValue)) {
-                    cc.error('Do not set default value to non-empty object, ' +
-    'unless the object defines its own "clone" function. Set default value of %s.%s to null or {}, ' +
-    'and initialize in "onLoad" or "ctor" please. (just like "this.%s = {foo: bar};")',
+                    cc.errorID(3636,
                         className, propName, propName);
                     return;
                 }
@@ -138,7 +130,7 @@ function defineProp (cls, className, propName, defaultValue, attrs) {
         for (var base = cls.$super; base; base = base.$super) {
             // 这个循环只能检测到最上面的FireClass的父类，如果再上还有父类，将不做检测。
             if (base.prototype.hasOwnProperty(propName)) {
-                cc.error('Can not declare %s.%s, it is already defined in the prototype of %s',
+                cc.errorID(3637,
                     className, propName, className);
                 return;
             }
@@ -179,7 +171,7 @@ function defineGetSet (cls, name, propName, val, attrs) {
 
     if (getter) {
         if (CC_DEV && d && d.get) {
-            cc.error('"%s": the getter of "%s" is already defined!', name, propName);
+            cc.errorID(3638, name, propName);
             return;
         }
 
@@ -187,8 +179,7 @@ function defineGetSet (cls, name, propName, val, attrs) {
             for (var i = 0; i < attrs.length; ++i) {
                 var attr = attrs[i];
                 if (CC_DEV && attr._canUsedInGetter === false) {
-                    cc.error('Can not apply the specified attribute to the getter of "%s.%s", ' +
-                             'attribute index: %s', name, propName, i);
+                    cc.errorID(3639, name, propName, i);
                     continue;
                 }
 
@@ -196,9 +187,7 @@ function defineGetSet (cls, name, propName, val, attrs) {
 
                 // check attributes
                 if (CC_DEV && (attr.serializable === false || attr.editorOnly === true)) {
-                    cc.warn('No need to use "serializable: false" or "editorOnly: true" for ' +
-                            'the getter of "%s.%s", every getter is actually non-serialized.',
-                        name, propName);
+                    cc.warnID(3613, name, propName);
                 }
             }
         }
@@ -233,7 +222,7 @@ function defineGetSet (cls, name, propName, val, attrs) {
     if (setter) {
         if (CC_DEV) {
             if (d && d.set) {
-                return cc.error('"%s": the setter of "%s" is already defined!', name, propName);
+                return cc.errorID(3640, name, propName);
             }
 
             Object.defineProperty(proto, propName, {
@@ -304,7 +293,7 @@ function doDefine (className, baseClass, mixins, constructor, options) {
 
             // mixin statics (this will also copy editor attributes for component)
             for (var p in mixin)
-                if (mixin.hasOwnProperty(p) && INVALID_STATICS.indexOf(p) < 0)
+                if (mixin.hasOwnProperty(p) && (!CC_DEV || INVALID_STATICS_DEV.indexOf(p) < 0))
                     fireClass[p] = mixin[p];
 
             // mixin attributes
@@ -323,41 +312,43 @@ function doDefine (className, baseClass, mixins, constructor, options) {
     return fireClass;
 }
 
-function define (className, baseClasses, mixins, constructor, options) {
-    if (cc.isChildClassOf(baseClasses, cc.Component)) {
-        var frame = cc._RFpeek();
-        if (frame) {
-            if (CC_DEV && constructor) {
-                cc.warn('Should not define constructor for cc.Component %s.', className);
-            }
-            if (frame.beh) {
-                cc.error('Each script can have at most one Component.');
-                return cls;
-            }
+function define (className, baseClass, mixins, constructor, options) {
+    var Component = cc.Component;
+    var frame = cc._RF.peek();
+    if (frame && cc.isChildClassOf(baseClass, Component)) {
+        // project component
+        if (CC_DEV && constructor) {
+            cc.warnID(3614, className);
+        }
+        if (frame.cls instanceof Component) {
+            cc.errorID(3615);
+            return null;
+        }
+        if (CC_DEV && frame.uuid && className) {
+            cc.warnID(3616, className);
+        }
+        className = className || frame.script;
+    }
+
+    var cls = doDefine(className, baseClass, mixins, constructor, options);
+
+    if (frame) {
+        if (cc.isChildClassOf(baseClass, Component)) {
             var uuid = frame.uuid;
-            if (uuid) {
-                if (CC_EDITOR && className) {
-                    cc.warn('Should not specify class name %s for Component which defines in project.', className);
-                }
-            }
-            //else {
-            //    builtin
-            //}
-            className = className || frame.script;
-            var cls = doDefine(className, baseClasses, mixins, constructor, options);
             if (uuid) {
                 JS._setClassId(uuid, cls);
                 if (CC_EDITOR) {
-                    cc.Component._addMenuItem(cls, 'i18n:MAIN_MENU.component.scripts/' + className, -1);
+                    Component._addMenuItem(cls, 'i18n:MAIN_MENU.component.scripts/' + className, -1);
                     cls.prototype.__scriptUuid = Editor.Utils.UuidUtils.decompressUuid(uuid);
                 }
             }
-            frame.beh = cls;
-            return cls;
+            frame.cls = cls;
+        }
+        else if (!(frame.cls instanceof Component)) {
+            frame.cls = cls;
         }
     }
-    // not project component
-    return doDefine(className, baseClasses, mixins, constructor, options);
+    return cls;
 }
 
 function normalizeClassName (className) {
@@ -392,27 +383,34 @@ function getNewValueTypeCode (value) {
     var clsName = JS.getClassName(value);
     var type = value.constructor;
     var res = 'new ' + clsName + '(';
-    for (var i = 0; i < type.__props__.length; i++) {
-        var prop = type.__props__[i];
-        var propVal = value[prop];
-        if (typeof propVal === 'object') {
-            cc.error('Can not construct %s because it contains object property.', clsName);
-            return 'new ' + clsName + '()';
+    var i;
+    if (type === cc.Mat3 || type === cc.Mat4) {
+        var data = value.data;
+        for (i = 0; i < data.length; i++) {
+            res += data[i];
+            if (i < data.length - 1) {
+                res += ',';
+            }
         }
-        res += propVal;
-        if (i < type.__props__.length - 1) {
-            res += ','
+    }
+    else {
+        for (i = 0; i < type.__props__.length; i++) {
+            var prop = type.__props__[i];
+            var propVal = value[prop];
+            if (typeof propVal === 'object') {
+                cc.errorID(3641, clsName);
+                return 'new ' + clsName + '()';
+            }
+            res += propVal;
+            if (i < type.__props__.length - 1) {
+                res += ',';
+            }
         }
     }
     return res + ')';
 }
 
-// wrap a new scope to enalbe minify
-function cleanEval_F (code, F) {
-    // jshint evil: true
-    return eval(code);
-    // jshint evil: false
-}
+// TODO - move escapeForJS, VAR_REG, getNewValueTypeCode to misc.js or a new source file
 
 // convert a normal string including newlines, quotes and unicode characters into a string literal
 // ready to use in JavaScript source
@@ -485,23 +483,15 @@ function compileProps (actualClass) {
 
     func += '})';
 
-    if (CC_TEST && !isPhantomJS) {
-        console.log(func);
-    }
+    // if (CC_TEST && !isPhantomJS) {
+    //     console.log(func);
+    // }
 
     // overwite __initProps__ to avoid compile again
-    actualClass.prototype.__initProps__ = cleanEval_F(func, F);
+    actualClass.prototype.__initProps__ = Misc.cleanEval_F(func, F);
 
     // call instantiateProps immediately, no need to pass actualClass into it anymore
     this.__initProps__();
-}
-
-// wrap a new scope to enalbe minify
-function cleanEval_fireClass (code) {
-    // jshint evil: true
-    var fireClass = eval(code);
-    // jshint evil: false
-    return fireClass;
 }
 
 function _createCtor (ctor, baseClass, mixins, className, options) {
@@ -511,7 +501,7 @@ function _createCtor (ctor, baseClass, mixins, className, options) {
         // check super call in constructor
         var originCtor = ctor;
         if (SuperCallReg.test(ctor)) {
-            cc.warn(cc._LogInfos.Editor.Class.callSuperCtor, className);
+            cc.warnID(3600, className);
             // suppresss super call
             ctor = function () {
                 this._super = function () {};
@@ -521,7 +511,7 @@ function _createCtor (ctor, baseClass, mixins, className, options) {
             };
         }
         if (/\bprototype.ctor\b/.test(originCtor)) {
-            cc.warn(cc._LogInfos.Editor.Class.callSuperCtor, className);
+            cc.warnID(3600, className);
             shouldAddProtoCtor = true;
         }
     }
@@ -530,16 +520,16 @@ function _createCtor (ctor, baseClass, mixins, className, options) {
     if (CC_DEV && ctor) {
         // check ctor
         if (CCClass._isCCClass(ctor)) {
-            cc.error('ctor of "%s" can not be another CCClass', className);
+            cc.errorID(3618, className);
         }
         if (typeof ctor !== 'function') {
-            cc.error('ctor of "%s" must be function type', className);
+            cc.errorID(3619, className);
         }
         if (ctor.length > 0 && !className.startsWith('cc.')) {
             // fireball-x/dev#138: To make a unified CCClass serialization process,
             // we don't allow parameters for constructor when creating instances of CCClass.
             // For advance user, construct arguments can still get from 'arguments'.
-            cc.warn('Can not instantiate CCClass "%s" with arguments.', className);
+            cc.warnID(3617, className);
         }
     }
     // get base user constructors
@@ -611,7 +601,7 @@ function _createCtor (ctor, baseClass, mixins, className, options) {
     body += '})';
 
     // jshint evil: true
-    var fireClass = cleanEval_fireClass(body);
+    var fireClass = Misc.cleanEval_fireClass(body);
     // jshint evil: false
 
     Object.defineProperty(fireClass, '__ctors__', {
@@ -666,7 +656,7 @@ function boundSuperCalls (baseClass, options, className) {
             }
         }
         if (CC_DEV && SuperCallRegStrict.test(func)) {
-            cc.warn('this._super declared in "%s.%s" but no super method defined', className, funcName);
+            cc.warnID(3620, className, funcName);
         }
     }
     return hasSuperCall;
@@ -692,7 +682,7 @@ function declareProperties (cls, className, properties, baseClass, mixins) {
 
     if (properties) {
         // 预处理属性
-        preprocessAttrs(properties, className, cls);
+        preprocess.preprocessAttrs(properties, className, cls);
 
         for (var propName in properties) {
             var val = properties[propName];
@@ -832,8 +822,8 @@ function CCClass (options) {
         var staticPropName;
         if (CC_DEV) {
             for (staticPropName in statics) {
-                if (INVALID_STATICS.indexOf(staticPropName) !== -1) {
-                    cc.error('Cannot define %s.%s because static member name can not be "%s".', name, staticPropName,
+                if (INVALID_STATICS_DEV.indexOf(staticPropName) !== -1) {
+                    cc.errorID(3642, name, staticPropName,
                         staticPropName);
                 }
             }
@@ -848,38 +838,17 @@ function CCClass (options) {
         if (BUILTIN_ENTRIES.indexOf(funcName) >= 0) {
             continue;
         }
-        if (CC_EDITOR && funcName === 'constructor') {
-            cc.error('Can not define a member called "constructor" in the class "%s", please use "ctor" instead.', name);
+        var func = options[funcName];
+        if (!preprocess.validateMethod(func, funcName, name, cls, base)) {
             continue;
         }
-        var func = options[funcName];
-        if (typeof func === 'function' || func === null) {
-            // use defineProperty to redefine some super method defined as getter
-            Object.defineProperty(cls.prototype, funcName, {
-                value: func,
-                enumerable: true,
-                configurable: true,
-                writable: true,
-            });
-        }
-        else if (CC_DEV) {
-            if (func === false && base && base.prototype) {
-                // check override
-                var overrided = base.prototype[funcName];
-                if (typeof overrided === 'function') {
-                    var baseFuc = JS.getClassName(base) + '.' + funcName;
-                    var subFuc = name + '.' + funcName;
-                    cc.warn('"%s" overrided "%s" but "%s" is defined as "false" so the super method will not be called. You can set "%s" to null to disable this warning.', subFuc, baseFuc, subFuc, subFuc);
-                }
-            }
-            var correct = TYPO_TO_CORRECT[funcName];
-            if (correct) {
-                cc.warn('Unknown type of %s.%s, maybe you want is "%s".', name, funcName, correct);
-            }
-            else if (func) {
-                cc.error('Unknown type of %s.%s, property should be defined in "properties" or "ctor"', name, funcName);
-            }
-        }
+        // use defineProperty to redefine some super method defined as getter
+        Object.defineProperty(cls.prototype, funcName, {
+            value: func,
+            enumerable: true,
+            configurable: true,
+            writable: true,
+        });
     }
 
     if (CC_DEV) {
@@ -889,7 +858,7 @@ function CCClass (options) {
                 cc.Component._registerEditorProps(cls, editor);
             }
             else {
-                cc.warn('Can not use "editor" attribute, "%s" not inherits from Components.', name);
+                cc.warnID(3623, name);
             }
         }
     }
@@ -948,7 +917,7 @@ cc.isChildClassOf = function (subclass, superclass) {
         }
         if (typeof superclass !== 'function') {
             if (CC_DEV) {
-                cc.warn('[isChildClassOf] superclass should be function type, not', superclass);
+                cc.warnID(3625, superclass);
             }
             return false;
         }
@@ -1028,7 +997,7 @@ function parseAttributes (attrs, className, propName) {
         }
         else if (type === 'Object') {
             if (CC_DEV) {
-                cc.error('Please define "type" parameter of %s.%s as the actual constructor.', className, propName);
+                cc.errorID(3644, className, propName);
             }
         }
         else {
@@ -1046,7 +1015,7 @@ function parseAttributes (attrs, className, propName) {
                         });
                     }
                     else if (CC_DEV) {
-                        cc.error('Please define "type" parameter of %s.%s as the constructor of %s.', className, propName, type);
+                        cc.errorID(3645, className, propName, type);
                     }
                 }
                 else if (typeof type === 'function') {
@@ -1062,7 +1031,7 @@ function parseAttributes (attrs, className, propName) {
                     }
                 }
                 else if (CC_DEV) {
-                    cc.error('Unknown "type" parameter of %s.%s：%s', className, propName, type);
+                    cc.errorID(3646, className, propName, type);
                 }
             }
         }
@@ -1139,7 +1108,7 @@ function parseAttributes (attrs, className, propName) {
                 result.push({ min: range[0], max: range[1], step: range[2] });
             }
             else if (CC_DEV) {
-                cc.error('The length of range array must be equal or greater than 2');
+                cc.errorID(3647);
             }
         }
         else if (CC_DEV) {

@@ -86,7 +86,7 @@ var RichText = cc.Class({
         string: {
             default: '<color=#00ff00>Rich</c><color=#0fffff>Text</color>',
             multiline: true,
-            tooltip: 'i18n:COMPONENT.richtext.string',
+            tooltip: CC_DEV && 'i18n:COMPONENT.richtext.string',
             notify: function () {
                 this._updateRichTextStatus();
             }
@@ -100,7 +100,7 @@ var RichText = cc.Class({
         horizontalAlign: {
             default: HorizontalAlign.LEFT,
             type: HorizontalAlign,
-            tooltip: 'i18n:COMPONENT.richtext.horizontal_align',
+            tooltip: CC_DEV && 'i18n:COMPONENT.richtext.horizontal_align',
             animatable: false,
             notify: function (oldValue) {
                 if(this.horizontalAlign === oldValue) return;
@@ -117,7 +117,7 @@ var RichText = cc.Class({
          */
         fontSize: {
             default: 40,
-            tooltip: 'i18n:COMPONENT.richtext.font_size',
+            tooltip: CC_DEV && 'i18n:COMPONENT.richtext.font_size',
             notify: function (oldValue) {
                 if(this.fontSize === oldValue) return;
 
@@ -134,7 +134,7 @@ var RichText = cc.Class({
         font: {
             default: null,
             type: cc.TTFFont,
-            tooltip: 'i18n:COMPONENT.richtext.font',
+            tooltip: CC_DEV && 'i18n:COMPONENT.richtext.font',
             notify: function (oldValue) {
                 if(this.font === oldValue) return;
 
@@ -153,7 +153,7 @@ var RichText = cc.Class({
          */
         maxWidth: {
             default: 0,
-            tooltip: 'i18n:COMPONENT.richtext.max_width',
+            tooltip: CC_DEV && 'i18n:COMPONENT.richtext.max_width',
             notify: function (oldValue) {
                 if(this.maxWidth === oldValue) return;
 
@@ -169,7 +169,7 @@ var RichText = cc.Class({
          */
         lineHeight: {
             default: 40,
-            tooltip: 'i18n:COMPONENT.richtext.line_height',
+            tooltip: CC_DEV && 'i18n:COMPONENT.richtext.line_height',
             notify: function (oldValue) {
                 if(this.lineHeight === oldValue) return;
 
@@ -186,7 +186,7 @@ var RichText = cc.Class({
         imageAtlas: {
             default: null,
             type: cc.SpriteAtlas,
-            tooltip: 'i18n:COMPONENT.richtext.image_atlas',
+            tooltip: CC_DEV && 'i18n:COMPONENT.richtext.image_atlas',
             notify: function(oldValue) {
                 if(this.imageAtlas === oldValue) return;
 
@@ -248,6 +248,9 @@ var RichText = cc.Class({
     },
 
     _onTTFLoaded: function () {
+        var rawUrl = this._getFontRawUrl();
+        if(!rawUrl) return;
+
         var self = this;
 
         var callback = function () {
@@ -255,7 +258,7 @@ var RichText = cc.Class({
             self._updateRichText();
         };
 
-        cc.CustomFontLoader.loadTTF(this._getFontRawUrl(), callback);
+        cc.CustomFontLoader.loadTTF(rawUrl, callback);
     },
 
     _measureText: function (styleIndex, string) {
@@ -343,10 +346,15 @@ var RichText = cc.Class({
         this._sgNode.addChild(labelSegment);
         this._labelSegments.push(labelSegment);
 
+        //when lineHeight is less than the content size of labelSize
+        //in Web platform, the extra pixels will be trimed.
+        //so we need to set the overflow to clamp in JSB
+        //FIXME: label in jsb should be refactored to keep the behavior the same as web platform.
         if(CC_JSB) {
             labelSegment.setOverflow(1);
             var size = labelSegment.getContentSize();
-            labelSegment.setContentSize(size.width, this.lineHeight);
+            labelSegment.enableWrap(false);
+            labelSegment.setDimensions(size.width, this.lineHeight);
         }
 
         return labelSegment;
@@ -524,7 +532,7 @@ var RichText = cc.Class({
                 }
             }
         } else {
-            cc.warn('Invalid RichText img tag! The sprite frame name can\'t be found in the ImageAtlas!');
+            cc.warnID(4400);
         }
     },
 
@@ -679,51 +687,68 @@ var RichText = cc.Class({
         }
     },
 
+    _convertLiteralColorValue: function (color) {
+        var colorValue = color.toUpperCase();
+        if (cc.Color[colorValue]) {
+            return cc.Color[colorValue];
+        } else {
+            return cc.hexToColor(color);
+        }
+    },
+
     _applyTextAttribute: function (label) {
         if(label instanceof cc.Scale9Sprite) return;
 
         var index = label._styleIndex;
         label.setLineHeight(this.lineHeight);
         label.setVerticalAlign(VerticalAlign.CENTER);
-        label.enableBold(false);
-        label.enableItalics(false);
-        label.enableUnderline(false);
 
         var textStyle = null;
-        if(this._textArray[index]) {
+        if (this._textArray[index]) {
             textStyle = this._textArray[index].style;
         }
-        if(textStyle && textStyle.color) {
-            var colorValue = textStyle.color.toUpperCase();
-            if(cc.Color[colorValue]) {
-                label.setColor(cc.Color[colorValue]);
-            } else {
-                label.setColor(cc.hexToColor(textStyle.color));
-            }
+        if (textStyle && textStyle.color) {
+            label.setColor(this._convertLiteralColorValue(textStyle.color));
         } else {
             label.setColor(this.node.color);
         }
 
-        if(textStyle && textStyle.bold) {
+        if (textStyle && textStyle.bold) {
             label.enableBold(true);
+        } else {
+            label.enableBold(false);
         }
 
-        if(textStyle && textStyle.italic) {
+        if (textStyle && textStyle.italic) {
             label.enableItalics(true);
+        } else {
+            label.enableItalics(false);
         }
 
-        if(textStyle && textStyle.underline) {
+        if (textStyle && textStyle.underline) {
             label.enableUnderline(true);
+        } else {
+            label.enableUnderline(false);
         }
 
-        if(textStyle && textStyle.size) {
+        if (textStyle && textStyle.outline) {
+            label.setOutlined(true);
+            label.setOutlineColor(this._convertLiteralColorValue(textStyle.outline.color));
+            label.setOutlineWidth(textStyle.outline.width);
+            label.setMargin(textStyle.outline.width);
+        } else {
+            label.setOutlined(false);
+            label.setMargin(0);
+        }
+
+        if (textStyle && textStyle.size) {
             label.setFontSize(textStyle.size);
         } else {
             label.setFontSize(this.fontSize);
         }
 
-        if(textStyle && textStyle.event) {
-            if(textStyle.event.click) {
+        if (textStyle && textStyle.event) {
+            if (textStyle.event.click) {
                 label._clickHandler = textStyle.event.click;
             }
         }
