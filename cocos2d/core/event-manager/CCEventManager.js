@@ -83,7 +83,7 @@ var __getListenerID = function (event) {
     if (type.startsWith(eventType.TOUCH)){
         // Touch listener is very special, it contains two kinds of listeners, EventListenerTouchOneByOne and EventListenerTouchAllAtOnce.
         // return UNKNOWN instead.
-        cc.log(cc._LogInfos._getListenerID);
+        cc.logID(2000);
     }
     return type;
 };
@@ -145,6 +145,10 @@ cc.eventManager = {
      * @param {Boolean} recursive
      */
     pauseTarget: function (node, recursive) {
+        if (!(node instanceof cc._BaseNode || node instanceof _ccsg.Node)) {
+            cc.warnID(3506);
+            return;
+        }
         var listeners = this._nodeListenersMap[node.__instanceId], i, len;
         if (listeners) {
             for ( i = 0, len = listeners.length; i < len; i++)
@@ -165,6 +169,10 @@ cc.eventManager = {
      * @param {Boolean} recursive
      */
     resumeTarget: function (node, recursive) {
+        if (!(node instanceof cc._BaseNode || node instanceof _ccsg.Node)) {
+            cc.warnID(3506);
+            return;
+        }
         var listeners = this._nodeListenersMap[node.__instanceId], i, len;
         if (listeners){
             for ( i = 0, len = listeners.length; i < len; i++)
@@ -199,7 +207,7 @@ cc.eventManager = {
 
             var node = listener._getSceneGraphPriority();
             if (node === null)
-                cc.log(cc._LogInfos.EventManager._forceAddEventListener);
+                cc.logID(3507);
 
             this._associateNodeAndEventListener(node, listener);
             if (node.isRunning())
@@ -400,7 +408,7 @@ cc.eventManager = {
 
     _updateListeners: function (event) {
         var locInDispatch = this._inDispatch;
-        cc.assert(locInDispatch > 0, cc._LogInfos.EventManager._updateListeners);
+        cc.assertID(locInDispatch > 0, 3508);
 
         if(locInDispatch > 1)
             return;
@@ -411,7 +419,7 @@ cc.eventManager = {
         } else
             this._onUpdateListeners(__getListenerID(event));
 
-        cc.assert(locInDispatch === 1, cc._LogInfos.EventManager._updateListeners_2);
+        cc.assertID(locInDispatch === 1, 3509);
         var locListenersMap = this._listenersMap, locPriorityDirtyFlagMap = this._priorityDirtyFlagMap;
         for (var selKey in locListenersMap) {
             if (locListenersMap[selKey].empty()) {
@@ -688,6 +696,17 @@ cc.eventManager = {
     },
 
     /**
+     * !#en Query whether the specified event listener id has been added.
+     * !#zh 查询指定的事件 ID 是否存在
+     * @method hasEventListener
+     * @param {String|Number} listenerID - The listener id.
+     * @return {Boolean} true or false
+     */
+    hasEventListener: function (listenerID) {
+        return !!this._getListeners(listenerID);
+    },
+
+    /**
      * !#en
      * <p>
      * Adds a event listener for a specified event.<br/>
@@ -711,13 +730,17 @@ cc.eventManager = {
      * @return {EventListener} Return the listener. Needed in order to remove the event from the dispatcher.
      */
     addListener: function (listener, nodeOrPriority) {
-        cc.assert(listener && nodeOrPriority, cc._LogInfos.EventManager.addListener_2);
-        if(!(listener instanceof cc.EventListener)){
-            cc.assert(!cc.js.isNumber(nodeOrPriority), cc._LogInfos.EventManager.addListener_3);
+        cc.assertID(listener && nodeOrPriority, 3503);
+        if (!(cc.js.isNumber(nodeOrPriority) || nodeOrPriority instanceof cc._BaseNode || nodeOrPriority instanceof _ccsg.Node)) {
+            cc.warnID(3506);
+            return;
+        }
+        if (!(listener instanceof cc.EventListener)) {
+            cc.assertID(!cc.js.isNumber(nodeOrPriority), 3504);
             listener = cc.EventListener.create(listener);
         } else {
-            if(listener._isRegistered()){
-                cc.log(cc._LogInfos.EventManager.addListener_4);
+            if (listener._isRegistered()) {
+                cc.logID(3505);
                 return;
             }
         }
@@ -727,7 +750,7 @@ cc.eventManager = {
 
         if (cc.js.isNumber(nodeOrPriority)) {
             if (nodeOrPriority === 0) {
-                cc.log(cc._LogInfos.EventManager.addListener);
+                cc.logID(3500);
                 return;
             }
 
@@ -872,6 +895,10 @@ cc.eventManager = {
      */
     removeListeners: function (listenerType, recursive) {
         var i, _t = this;
+        if (!(cc.js.isNumber(listenerType) || listenerType instanceof cc._BaseNode || listenerType instanceof _ccsg.Node)) {
+            cc.warnID(3506);
+            return;
+        }
         if (listenerType.__instanceId !== undefined) {
             // Ensure the node is removed from these immediately also.
             // Don't want any dangling pointers or the possibility of dealing with deleted objects..
@@ -918,7 +945,7 @@ cc.eventManager = {
             else if (listenerType === cc.EventListener.KEYBOARD)
                 _t._removeListenersForListenerID(cc._EventListenerKeyboard.LISTENER_ID);
             else
-                cc.log(cc._LogInfos.EventManager.removeListeners);
+                cc.logID(3501);
         }
     },
 
@@ -964,7 +991,7 @@ cc.eventManager = {
                 var found = fixedPriorityListeners.indexOf(listener);
                 if (found !== -1) {
                     if(listener._getSceneGraphPriority() != null)
-                        cc.log(cc._LogInfos.EventManager.setPriority);
+                        cc.logID(3502);
                     if (listener._getFixedPriority() !== fixedPriority) {
                         listener._setFixedPriority(fixedPriority);
                         this._setDirty(listener._getListenerID(), this.DIRTY_FIXED_PRIORITY);

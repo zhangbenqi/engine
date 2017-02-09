@@ -133,18 +133,19 @@ cc.eventManager.addListener = function(listener, nodeOrPriority) {
 
     if (typeof nodeOrPriority === 'number') {
         if (nodeOrPriority === 0) {
-            cc.log('0 priority is forbidden for fixed priority since it\'s used for scene graph based priority.');
+            cc.logID(3500);
             return;
         }
 
         cc.eventManager.addEventListenerWithFixedPriority(listener, nodeOrPriority);
     } else {
         var node = nodeOrPriority;
-        if (nodeOrPriority instanceof cc.Component) {
-            node = nodeOrPriority.node._sgNode;
-        }
-        if (nodeOrPriority instanceof cc.Node) {
+        if (nodeOrPriority instanceof cc._BaseNode) {
             node = nodeOrPriority._sgNode;
+        }
+        else if (!(node instanceof _ccsg.Node)) {
+            cc.warnID(3506);
+            return;
         }
         cc.eventManager.addEventListenerWithSceneGraphPriority(listener, node);
     }
@@ -153,28 +154,26 @@ cc.eventManager.addListener = function(listener, nodeOrPriority) {
 };
 cc.eventManager._removeListeners = cc.eventManager.removeListeners;
 cc.eventManager.removeListeners = function (target, recursive) {
-    if (target instanceof cc.Component) {
-        target = target.node._sgNode;
-    }
-    if (target instanceof cc.Node) {
+    if (target instanceof cc._BaseNode) {
         target = target._sgNode;
     }
-    else if (!(target instanceof _ccsg.Node)) {
-        return;
+    
+    if (target instanceof _ccsg.Node || cc.js.isNumber(target)) {
+        this._removeListeners(target, recursive || false);
     }
-    this._removeListeners(target, recursive || false);
+    else {
+        cc.warnID(3506);
+    }
 };
 cc.eventManager._pauseTarget = cc.eventManager.pauseTarget;
 cc.eventManager.pauseTarget = function (target, recursive) {
     var sgTarget = target;
     target._eventPaused = true;
-    if (target instanceof cc.Component) {
-        sgTarget = target.node._sgNode;
-    }
-    else if (target instanceof cc.Node) {
+    if (target instanceof cc._BaseNode) {
         sgTarget = target._sgNode;
     }
     else if (!(sgTarget instanceof _ccsg.Node)) {
+        cc.warnID(3506);
         return;
     }
 
@@ -193,17 +192,28 @@ cc.eventManager.pauseTarget = function (target, recursive) {
 cc.eventManager._resumeTarget = cc.eventManager.resumeTarget;
 cc.eventManager.resumeTarget = function (target, recursive) {
     target._eventPaused = false;
-    if (target instanceof cc.Component) {
-        target = target.node._sgNode;
-    }
-    if (target instanceof cc.Node) {
+    if (target instanceof cc._BaseNode) {
         target = target._sgNode;
     }
     else if (!(target instanceof _ccsg.Node)) {
+        cc.warnID(3506);
         return;
     }
     this._resumeTarget(target, recursive || false);
 };
+
+cc._EventListenerKeyboard = cc.EventListenerKeyboard;
+cc._EventListenerKeyboard.LISTENER_ID = "__cc_keyboard";
+cc._EventListenerAcceleration = cc.EventListenerAcceleration;
+cc._EventListenerAcceleration.LISTENER_ID = "__cc_acceleration";
+cc._EventListenerFocus = cc.EventListenerFocus;
+cc._EventListenerFocus.LISTENER_ID = "__cc_focus_event";
+cc._EventListenerTouchAllAtOnce = cc.EventListenerTouchAllAtOnce;
+cc._EventListenerTouchAllAtOnce.LISTENER_ID = "__cc_touch_all_at_once";
+cc._EventListenerTouchOneByOne = cc.EventListenerTouchOneByOne;
+cc._EventListenerTouchOneByOne.LISTENER_ID = "__cc_touch_one_by_one";
+cc._EventListenerMouse = cc.EventListenerMouse;
+cc._EventListenerMouse.LISTENER_ID = "__cc_mouse";
 
 cc.js.mixin(cc.EventTouch.prototype, {
     setLocation: function (x, y) {

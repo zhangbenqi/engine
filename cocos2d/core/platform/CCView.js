@@ -66,6 +66,7 @@ switch(__BrowserGetter.adaptationType){
         __BrowserGetter.__defineGetter__("target-densitydpi", function(){
             return cc.view._targetDensityDPI;
         });
+        break;
     case cc.sys.BROWSER_TYPE_SOUGOU:
     case cc.sys.BROWSER_TYPE_UC:
         __BrowserGetter.availWidth = function(frame){
@@ -296,7 +297,7 @@ var View = cc._Class.extend({
      */
     setOrientation: function (orientation) {
         orientation = orientation & cc.macro.ORIENTATION_AUTO;
-        if (orientation) {
+        if (orientation && this._orientation !== orientation) {
             this._orientation = orientation;
             var designWidth = this._originalDesignResolutionSize.width;
             var designHeight = this._originalDesignResolutionSize.height;
@@ -449,9 +450,9 @@ var View = cc._Class.extend({
         }
         this._antiAliasEnabled = enabled;
         if(cc._renderType === cc.game.RENDER_TYPE_WEBGL) {
-            var map = cc.loader._items.map;
-            for (var key in map) {
-                var item = map[key];
+            var cache = cc.loader._cache;
+            for (var key in cache) {
+                var item = cache[key];
                 var tex = item && item.content instanceof cc.Texture2D ? item.content : null;
                 if (tex) {
                     if (enabled) {
@@ -531,7 +532,6 @@ var View = cc._Class.extend({
      */
     setFrameZoomFactor: function (zoomFactor) {
         this._frameZoomFactor = zoomFactor;
-        this.centerWindow();
         cc.director.setProjection(cc.director.getProjection());
     },
 
@@ -611,7 +611,6 @@ var View = cc._Class.extend({
         this._frameSize.height = height;
         cc.game.frame.style.width = width + "px";
         cc.game.frame.style.height = height + "px";
-        //this.centerWindow();
         this._resizeEvent();
         cc.director.setProjection(cc.director.getProjection());
     },
@@ -717,14 +716,14 @@ var View = cc._Class.extend({
     setDesignResolutionSize: function (width, height, resolutionPolicy) {
         // Defensive code
         if( !(width > 0 || height > 0) ){
-            cc.log(cc._LogInfos.view.setDesignResolutionSize);
+            cc.logID(2200);
             return;
         }
 
         this.setResolutionPolicy(resolutionPolicy);
         var policy = this._resolutionPolicy;
         if (!policy){
-            cc.log(cc._LogInfos.view.setDesignResolutionSize_2);
+            cc.logID(2201);
             return;
         }
         policy.preApply(this);

@@ -158,7 +158,7 @@ var Button = cc.Class({
          */
         interactable: {
             default: true,
-            tooltip: 'i18n:COMPONENT.button.interactable',
+            tooltip: CC_DEV && 'i18n:COMPONENT.button.interactable',
             notify: function (oldValue) {
                 if(CC_EDITOR) {
                     if(oldValue) {
@@ -192,7 +192,7 @@ var Button = cc.Class({
          */
         enableAutoGrayEffect: {
             default: false,
-            tooltip: 'i18n:COMPONENT.button.auto_gray_effect',
+            tooltip: CC_DEV && 'i18n:COMPONENT.button.auto_gray_effect',
             notify: function () {
                 this._updateDisabledState();
             }
@@ -206,7 +206,7 @@ var Button = cc.Class({
          */
         transition: {
             default: Transition.NONE,
-            tooltip: 'i18n:COMPONENT.button.transition',
+            tooltip: CC_DEV && 'i18n:COMPONENT.button.transition',
             type: Transition,
             animatable: false
         },
@@ -221,7 +221,7 @@ var Button = cc.Class({
         normalColor: {
             default: cc.color(214, 214, 214),
             displayName: 'Normal',
-            tooltip: 'i18n:COMPONENT.button.normal_color',
+            tooltip: CC_DEV && 'i18n:COMPONENT.button.normal_color',
             notify: function () {
                 this._updateState();
             }
@@ -235,7 +235,7 @@ var Button = cc.Class({
         pressedColor: {
             default: cc.color(211, 211, 211),
             displayName: 'Pressed',
-            tooltip: 'i18n:COMPONENT.button.pressed_color',
+            tooltip: CC_DEV && 'i18n:COMPONENT.button.pressed_color',
         },
 
         /**
@@ -246,7 +246,7 @@ var Button = cc.Class({
         hoverColor: {
             default: cc.Color.WHITE,
             displayName: 'Hover',
-            tooltip: 'i18n:COMPONENT.button.hover_color',
+            tooltip: CC_DEV && 'i18n:COMPONENT.button.hover_color',
         },
 
         /**
@@ -257,7 +257,7 @@ var Button = cc.Class({
         disabledColor: {
             default: cc.color(124, 124, 124),
             displayName: 'Disabled',
-            tooltip: 'i18n:COMPONENT.button.disabled_color',
+            tooltip: CC_DEV && 'i18n:COMPONENT.button.disabled_color',
             notify: function () {
                 this._updateState();
             }
@@ -271,7 +271,7 @@ var Button = cc.Class({
         duration: {
             default: 0.1,
             range: [0, 10],
-            tooltip: 'i18n:COMPONENT.button.duration',
+            tooltip: CC_DEV && 'i18n:COMPONENT.button.duration',
         },
 
         /**
@@ -282,7 +282,7 @@ var Button = cc.Class({
          */
         zoomScale: {
             default: 1.2,
-            tooltip: 'i18n:COMPONENT.button.zoom_scale'
+            tooltip: CC_DEV && 'i18n:COMPONENT.button.zoom_scale'
         },
 
         // sprite transition
@@ -295,7 +295,7 @@ var Button = cc.Class({
             default: null,
             type: cc.SpriteFrame,
             displayName: 'Normal',
-            tooltip: 'i18n:COMPONENT.button.normal_sprite',
+            tooltip: CC_DEV && 'i18n:COMPONENT.button.normal_sprite',
             notify: function () {
                 this._updateState();
             }
@@ -310,7 +310,7 @@ var Button = cc.Class({
             default: null,
             type: cc.SpriteFrame,
             displayName: 'Pressed',
-            tooltip: 'i18n:COMPONENT.button.pressed_sprite',
+            tooltip: CC_DEV && 'i18n:COMPONENT.button.pressed_sprite',
         },
 
         /**
@@ -322,7 +322,7 @@ var Button = cc.Class({
             default: null,
             type: cc.SpriteFrame,
             displayName: 'Hover',
-            tooltip: 'i18n:COMPONENT.button.hover_sprite',
+            tooltip: CC_DEV && 'i18n:COMPONENT.button.hover_sprite',
         },
 
         /**
@@ -334,7 +334,7 @@ var Button = cc.Class({
             default: null,
             type: cc.SpriteFrame,
             displayName: 'Disabled',
-            tooltip: 'i18n:COMPONENT.button.disabled_sprite',
+            tooltip: CC_DEV && 'i18n:COMPONENT.button.disabled_sprite',
             notify: function () {
                 this._updateState();
             }
@@ -358,7 +358,7 @@ var Button = cc.Class({
         target: {
             default: null,
             type: cc.Node,
-            tooltip: "i18n:COMPONENT.button.target",
+            tooltip: CC_DEV && "i18n:COMPONENT.button.target",
             notify: function () {
                 this._applyTarget();
             }
@@ -372,7 +372,7 @@ var Button = cc.Class({
         clickEvents: {
             default: [],
             type: cc.Component.EventHandler,
-            tooltip: 'i18n:COMPONENT.button.click_events',
+            tooltip: CC_DEV && 'i18n:COMPONENT.button.click_events',
         }
     },
 
@@ -384,6 +384,8 @@ var Button = cc.Class({
         if (!this.target) {
             this.target = this.node;
         }
+        this._applyTarget();
+        this._updateState();
     },
 
     onEnable: function () {
@@ -412,15 +414,10 @@ var Button = cc.Class({
         }
     },
 
-    onLoad: function () {
-        this._applyTarget();
-        this._updateState();
-    },
-
     update: function (dt) {
         var target = this.target;
-        if ((this.transition !== Transition.COLOR && this.transition !== Transition.SCALE)
-            || !target || this._transitionFinished) return;
+        if(this._transitionFinished) return;
+        if (this.transition !== Transition.COLOR && this.transition !== Transition.SCALE) return;
 
         this.time += dt;
         var ratio = 1.0;
@@ -471,16 +468,12 @@ var Button = cc.Class({
         if (!this.interactable || !this.enabledInHierarchy) return;
 
         this._pressed = true;
-        if(this.transition === Transition.SCALE) {
-            this._zoomUp();
-        } else {
-            this._updateState();
-        }
+        this._updateState();
         event.stopPropagation();
     },
 
     _onTouchMove: function (event) {
-        if (!this.interactable || !this.enabledInHierarchy) return;
+        if (!this.interactable || !this.enabledInHierarchy || !this._pressed) return;
         // mobile phone will not emit _onMouseMoveOut,
         // so we have to do hit test when touch moving
         var touch = event.touch;
@@ -488,8 +481,12 @@ var Button = cc.Class({
 
         if(this.transition === Transition.SCALE && this.target) {
             if(hit) {
-                this.target.scale = this._originalScale * this.zoomScale;
+                this._fromScale = this._originalScale;
+                this._toScale = this._originalScale * this.zoomScale;
+                this._transitionFinished = false;
             } else {
+                this.time = 0;
+                this._transitionFinished = true;
                 this.target.scale = this._originalScale;
             }
         } else {
@@ -499,9 +496,7 @@ var Button = cc.Class({
             } else {
                 state = 'normal';
             }
-            var color  = this[state + 'Color'];
-            var sprite = this[state + 'Sprite'];
-            this._applyTransition(color, sprite);
+            this._applyTransition(state);
         }
         event.stopPropagation();
     },
@@ -514,11 +509,7 @@ var Button = cc.Class({
             this.node.emit('click', this);
         }
         this._pressed = false;
-        if(this.transition === Transition.SCALE) {
-            this._zoomBack();
-        } else {
-            this._updateState();
-        }
+        this._updateState();
         event.stopPropagation();
     },
 
@@ -530,7 +521,7 @@ var Button = cc.Class({
     },
 
     _zoomBack: function () {
-        this._fromScale = this._originalScale * this.zoomScale;
+        this._fromScale = this.target.scale;
         this._toScale = this._originalScale;
         this.time = 0;
         this._transitionFinished = false;
@@ -540,7 +531,6 @@ var Button = cc.Class({
         if (!this.interactable || !this.enabledInHierarchy) return;
 
         this._pressed = false;
-
         this._updateState();
     },
 
@@ -563,23 +553,8 @@ var Button = cc.Class({
 
     // state handler
     _updateState: function () {
-        var state;
-        if (!this.interactable) {
-            state = 'disabled';
-        }
-        else if (this._pressed) {
-            state = 'pressed';
-        }
-        else if (this._hovered) {
-            state = 'hover';
-        }
-        else {
-            state = 'normal';
-        }
-        var color  = this[state + 'Color'];
-        var sprite = this[state + 'Sprite'];
-
-        this._applyTransition(color, sprite);
+        var state = this._getButtonState();
+        this._applyTransition(state);
         this._updateDisabledState();
     },
 
@@ -600,24 +575,63 @@ var Button = cc.Class({
         }
     },
 
-    _applyTransition: function (color, sprite) {
+    _getButtonState: function () {
+        var state;
+        if (!this.interactable) {
+            state = 'disabled';
+        }
+        else if (this._pressed) {
+            state = 'pressed';
+        }
+        else if (this._hovered) {
+            state = 'hover';
+        }
+        else {
+            state = 'normal';
+        }
+        return state;
+    },
+
+    _updateColorTransition: function (state) {
+        var color  = this[state + 'Color'];
+        var target = this.target;
+
+        if (CC_EDITOR) {
+            target.color = color;
+        }
+        else {
+            this._fromColor = target.color.clone();
+            this._toColor = color;
+            this.time = 0;
+            this._transitionFinished = false;
+        }
+    },
+
+    _updateSpriteTransition: function (state) {
+        var sprite = this[state + 'Sprite'];
+        if(this._sprite && sprite) {
+            this._sprite.spriteFrame = sprite;
+        }
+    },
+
+    _updateScaleTransition: function (state) {
+        if(state === 'pressed') {
+            this._zoomUp();
+        } else {
+            this._zoomBack();
+        }
+    },
+
+    _applyTransition: function (state) {
+
         var transition = this.transition;
 
         if (transition === Transition.COLOR) {
-            var target = this.target;
-
-            if (CC_EDITOR) {
-                target.color = color;
-            }
-            else {
-                this._fromColor = target.color.clone();
-                this._toColor = color;
-                this.time = 0;
-                this._transitionFinished = false;
-            }
-        }
-        else if (transition === Transition.SPRITE && this._sprite && sprite) {
-            this._sprite.spriteFrame = sprite;
+            this._updateColorTransition(state);
+        } else if (transition === Transition.SPRITE) {
+            this._updateSpriteTransition(state);
+        } else if(transition === Transition.SCALE) {
+            this._updateScaleTransition(state);
         }
     },
 

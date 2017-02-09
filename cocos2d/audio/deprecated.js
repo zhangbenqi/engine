@@ -25,17 +25,17 @@
  ****************************************************************************/
 
 var js = cc.js;
-var INFO = cc._LogInfos.deprecated;
+// var INFO = cc._LogInfos.deprecated;
 
 exports.removed = function (audioEngine) {
 	function willPlayMusicError () {
-		cc.error('Sorry, cc.audioEngine.willPlayMusic is removed.');
+		cc.errorID(1403);
 	}
 	js.getset(audioEngine, 'willPlayMusic', willPlayMusicError, willPlayMusicError);
 };
 
 exports.deprecated = function (audioEngine) {
-	
+
 	var musicId = -1;
 	var musicPath = 1;
 	var musicLoop = 1;
@@ -203,7 +203,7 @@ exports.deprecated = function (audioEngine) {
 				audioEngine.stopAll();
 				if (musicPlay) {
 					musicId = audioEngine.play(musicPath, musicLoop);
-					audioEngine.setCurrentTime(currentTime);
+					audioEngine.setCurrentTime(musicId, currentTime);
 				}
 			}
 		}

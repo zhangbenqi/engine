@@ -42,7 +42,7 @@ else {
 
 function downloadScript (item, callback, isAsync) {
     var url = item.url,
-        d = document, 
+        d = document,
         s = document.createElement('script');
     s.async = isAsync;
     s.src = urlAppendTimestamp(url);
@@ -63,35 +63,31 @@ function downloadScript (item, callback, isAsync) {
     d.body.appendChild(s);
 }
 
-function downloadTextSync (item) {
-    var url = item.url;
-    var xhr = cc.loader.getXMLHttpRequest();
-    xhr.open('GET', url, false);
-    if (/msie/i.test(window.navigator.userAgent) && !/opera/i.test(window.navigator.userAgent)) {
-        // IE-specific logic here
-        xhr.setRequestHeader('Accept-Charset', 'utf-8');
-    } else {
-        if (xhr.overrideMimeType) xhr.overrideMimeType('text\/plain; charset=utf-8');
+function downloadWebp (item, callback, isCrossOrigin, img) {
+    if (!cc.sys.capabilities.webp) {
+        setTimeout(function () {
+            callback('Load Webp ( ' + item.url + ' ) failed')
+        }, 0);
+        return;
     }
-    xhr.send(null);
-    if (xhr.readyState !== 4 || !(xhr.status === 200 || xhr.status === 0)) {
-        return null;
-    }
-    return xhr.responseText;
+    downloadImage(item, callback, isCrossOrigin, img);
 }
 
-function downloadImage (item, callback, isCrossOrigin) {
+function downloadImage (item, callback, isCrossOrigin, img) {
     if (isCrossOrigin === undefined) {
         isCrossOrigin = true;
     }
 
     var url = urlAppendTimestamp(item.url);
-    var img = new Image();
-    if (isCrossOrigin && window.location.origin !== 'file://') {
+    img = img || new Image();
+    if (isCrossOrigin && window.location.protocol !== 'file:') {
         img.crossOrigin = 'anonymous';
     }
+    else {
+        img.crossOrigin = null;
+    }
 
-    if (img.complete && img.naturalWidth > 0) {
+    if (img.complete && img.naturalWidth > 0 && img.src === url) {
         callback(null, img);
     }
     else {
@@ -99,16 +95,16 @@ function downloadImage (item, callback, isCrossOrigin) {
             img.removeEventListener('load', loadCallback);
             img.removeEventListener('error', errorCallback);
 
-            if (callback) {
-                callback(null, img);
-            }
+            callback(null, img);
         }
         function errorCallback () {
             img.removeEventListener('load', loadCallback);
             img.removeEventListener('error', errorCallback);
 
-            if (img.crossOrigin && img.crossOrigin.toLowerCase() === 'anonymous') {
-                downloadImage(item, callback, false);
+            // Retry without crossOrigin mark if crossOrigin loading fails
+            // Do not retry if protocol is https, even if the image is loaded, cross origin image isn't renderable.
+            if (window.location.protocol !== 'https:' && img.crossOrigin && img.crossOrigin.toLowerCase() === 'anonymous') {
+                downloadImage(item, callback, false, img);
             }
             else {
                 callback('Load image (' + url + ') failed');
@@ -117,8 +113,8 @@ function downloadImage (item, callback, isCrossOrigin) {
 
         img.addEventListener('load', loadCallback);
         img.addEventListener('error', errorCallback);
+        img.src = url;
     }
-    img.src = url;
 }
 
 var FONT_TYPE = {
@@ -129,8 +125,8 @@ var FONT_TYPE = {
     '.svg' : 'svg'
 };
 function _loadFont (name, srcs, type){
-    var doc = document, 
-        path = cc.path, 
+    var doc = document,
+        path = cc.path,
         fontStyle = document.createElement('style');
     fontStyle.type = 'text/css';
     doc.body.appendChild(fontStyle);
@@ -167,8 +163,8 @@ function _loadFont (name, srcs, type){
 }
 function downloadFont (item, callback) {
     var url = item.url,
-        type = item.type, 
-        name = item.name, 
+        type = item.type,
+        name = item.name,
         srcs = item.srcs;
     if (name && srcs) {
         if (srcs.indexOf(url) === -1) {
@@ -194,7 +190,7 @@ function downloadFont (item, callback) {
 var reusedArray = [];
 
 function downloadUuid (item, callback) {
-    var uuid = item.id;
+    var uuid = item.uuid;
     var self = this;
     cc.AssetLibrary.queryAssetInfo(uuid, function (error, url, isRawAsset) {
         if (error) {
@@ -249,14 +245,13 @@ var defaultMap = {
     'gif' : downloadImage,
     'ico' : downloadImage,
     'tiff' : downloadImage,
-    'webp' : downloadImage,
+    'webp' : downloadWebp,
     'image' : downloadImage,
 
     // Audio
     'mp3' : downloadAudio,
     'ogg' : downloadAudio,
     'wav' : downloadAudio,
-    'mp4' : downloadAudio,
     'm4a' : downloadAudio,
 
     // Txt
@@ -308,7 +303,7 @@ var ID = 'Downloader';
  *      // This will match all url with `.scene` extension or all url with `scene` type
  *      'scene' : function (url, callback) {}
  *  });
- * 
+ *
  * @method Downloader
  * @param {Object} extMap Custom supported types with corresponded handler
  */

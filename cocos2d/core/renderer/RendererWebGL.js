@@ -109,7 +109,8 @@ function initQuadBuffer (numQuads) {
 
 var VertexType = cc.Enum({
     QUAD : 0,
-    TRIANGLE : 1
+    TRIANGLE : 1,
+    CUSTOM: 2
 });
 
 cc.rendererWebGL = {
@@ -274,7 +275,7 @@ cc.rendererWebGL = {
         }
     },
 
-    _increaseBatchingSize: function (increment, vertexType) {
+    _increaseBatchingSize: function (increment, vertexType, indices) {
         vertexType = vertexType || VertexType.QUAD;
         var i, curr;
         switch (vertexType) {
@@ -298,10 +299,33 @@ cc.rendererWebGL = {
                 _indexData[_indexSize++] = curr + 2;
             }
             break;
+        case VertexType.CUSTOM:
+            // CUSTOM type increase the indices data
+            _pureQuad = false;
+            var len = indices.length;
+            for (i = 0; i < len; i++) {
+                _indexData[_indexSize++] = _batchingSize + indices[i];
+            }
+            break;
         default:
             return;
         }
         _batchingSize += increment;
+    },
+
+    _updateBatchedInfo: function (texture, blendFunc, shaderProgram) {
+        if (texture) {
+            _batchedInfo.texture = texture;
+        }
+
+        if (blendFunc) {
+            _batchedInfo.blendSrc = blendFunc.src;
+            _batchedInfo.blendDst = blendFunc.dst;
+        }
+
+        if (shaderProgram) {
+            _batchedInfo.shader = shaderProgram;
+        }
     },
 
     _breakBatch: function () {
@@ -315,7 +339,7 @@ cc.rendererWebGL = {
 
         // Check batching
         var node = cmd._node;
-        var texture = cmd._texture || node._texture || node._spriteFrame._texture;
+        var texture = cmd._texture || node._texture || (node._spriteFrame && node._spriteFrame._texture);
         var blendSrc = cmd._node._blendFunc.src;
         var blendDst = cmd._node._blendFunc.dst;
         var shader = cmd._shaderProgram;
@@ -359,6 +383,12 @@ cc.rendererWebGL = {
                     _indexData[_indexSize++] = curr + 2;
                 }
                 break;
+            case VertexType.CUSTOM:
+                _pureQuad = false;
+                if (cmd.uploadIndexData) {
+                    _indexSize += cmd.uploadIndexData(_indexData, _indexSize, _batchingSize);
+                }
+                break;
             default:
                 return;
             }
@@ -384,7 +414,7 @@ cc.rendererWebGL = {
         cc.gl.blendFunc(_batchedInfo.blendSrc, _batchedInfo.blendDst);
         cc.gl.bindTexture2DN(0, texture);                   // = cc.gl.bindTexture2D(texture);
 
-        var _bufferchanged = !gl.bindBuffer(gl.ARRAY_BUFFER, _vertexBuffer);
+        gl.bindBuffer(gl.ARRAY_BUFFER, _vertexBuffer);
         // upload the vertex data to the gl buffer
         if (uploadAll) {
             gl.bufferData(gl.ARRAY_BUFFER, _vertexDataF32, gl.DYNAMIC_DRAW);
@@ -394,14 +424,12 @@ cc.rendererWebGL = {
             gl.bufferData(gl.ARRAY_BUFFER, view, gl.DYNAMIC_DRAW);
         }
 
-        if (_bufferchanged) {
-            gl.enableVertexAttribArray(cc.macro.VERTEX_ATTRIB_POSITION);
-            gl.enableVertexAttribArray(cc.macro.VERTEX_ATTRIB_COLOR);
-            gl.enableVertexAttribArray(cc.macro.VERTEX_ATTRIB_TEX_COORDS);
-            gl.vertexAttribPointer(cc.macro.VERTEX_ATTRIB_POSITION, 3, gl.FLOAT, false, 24, 0);
-            gl.vertexAttribPointer(cc.macro.VERTEX_ATTRIB_COLOR, 4, gl.UNSIGNED_BYTE, true, 24, 12);
-            gl.vertexAttribPointer(cc.macro.VERTEX_ATTRIB_TEX_COORDS, 2, gl.FLOAT, false, 24, 16);
-        }
+        gl.enableVertexAttribArray(cc.macro.VERTEX_ATTRIB_POSITION);
+        gl.enableVertexAttribArray(cc.macro.VERTEX_ATTRIB_COLOR);
+        gl.enableVertexAttribArray(cc.macro.VERTEX_ATTRIB_TEX_COORDS);
+        gl.vertexAttribPointer(cc.macro.VERTEX_ATTRIB_POSITION, 3, gl.FLOAT, false, 24, 0);
+        gl.vertexAttribPointer(cc.macro.VERTEX_ATTRIB_COLOR, 4, gl.UNSIGNED_BYTE, true, 24, 12);
+        gl.vertexAttribPointer(cc.macro.VERTEX_ATTRIB_TEX_COORDS, 2, gl.FLOAT, false, 24, 16);
 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, _indexBuffer);
         if (!_prevIndexSize || !_pureQuad || _indexSize > _prevIndexSize) {

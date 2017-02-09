@@ -56,8 +56,7 @@ p.removeAnimation = function (anim) {
 p.sample = function () {
     var anims = this.playingAnims;
     for (var i = 0; i < anims.length; i++) {
-        var anim = anims[i];
-        anim.sample();
+        anims[i].sample();
     }
 };
 
@@ -84,8 +83,20 @@ p.resumeState = function (state) {
 };
 
 p.setStateTime = function (state, time) {
-    if (state) {
-        state.setTime(time);
+    if (arguments.length === 2) {
+        if (state) {
+            state.setTime(time);
+            state.sample();
+        }    
+    }
+    else {
+        time = state;
+
+        var anims = this.playingAnims;
+        for (var i = 0, l = anims.length; i < l; i++) {
+            anims[i].setTime(time);
+            anims[i].sample();
+        }
     }
 };
 
@@ -223,7 +234,7 @@ function initClipData (root, state) {
                 var motionPath = keyframe.motionPath;
 
                 if (motionPath && !checkMotionPath(motionPath)) {
-                    cc.error('motion path of target [' + target.name + '] in prop [' + propPath + '] frame [' + j +'] is not valid');
+                    cc.errorID(3904, target.name, propPath, j);
                     motionPath = null;
                 }
 
