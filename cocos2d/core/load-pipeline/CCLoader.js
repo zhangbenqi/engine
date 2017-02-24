@@ -66,6 +66,9 @@ function getResWithUrl (res) {
         result.type = null;
         result.isRawAsset = true;
     }
+    else if (!isUuid) {
+        result.isRawAsset = true;
+    }
     return result;
 }
 
@@ -509,7 +512,7 @@ JS.mixin(CCLoader.prototype, {
      * @returns {Number}
      */
     getResCount: function () {
-        return this._cache.length;
+        return Object.keys(this._cache).length;
     },
 
     /**

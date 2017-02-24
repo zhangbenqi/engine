@@ -129,7 +129,7 @@ var View = cc._Class.extend({
     _resizeCallback: null,
 
     _orientationChanging: true,
-    _screenChange: true,// add [bq]
+    _resizing: false,
 
     _scaleX: 1,
     _originalScaleX: 1,
@@ -207,8 +207,10 @@ var View = cc._Class.extend({
         // Frame size changed, do resize works
         var width = view._originalDesignResolutionSize.width;
         var height = view._originalDesignResolutionSize.height;
+        view._resizing = true;
         if (width > 0)
             view.setDesignResolutionSize(width, height, view._resolutionPolicy);
+        view._resizing = false;
 
         cc.eventManager.dispatchCustomEvent('canvas-resize');
         if (view._resizeCallback) {
@@ -288,9 +290,9 @@ var View = cc._Class.extend({
 
     /**
      * Sets the orientation of the game, it can be landscape, portrait or auto.
-     * When set it to landscape or portrait, and screen w/h ratio doesn't fit,
+     * When set it to landscape or portrait, and screen w/h ratio doesn't fit, 
      * cc.view will automatically rotate the game canvas using CSS.
-     * Note that this function doesn't have any effect in native,
+     * Note that this function doesn't have any effect in native, 
      * in native, you need to set the application orientation in native project settings
      * @method setOrientation
      * @param {Number} orientation - Possible values: cc.macro.ORIENTATION_LANDSCAPE | cc.macro.ORIENTATION_PORTRAIT | cc.macro.ORIENTATION_AUTO
@@ -305,20 +307,14 @@ var View = cc._Class.extend({
         }
     },
 
-    //add [bq]
-    enableScreenChange: function(screenChange) {
-        this._screenChange = screenChange;
-    },
-
-
     _initFrameSize: function () {
         var locFrameSize = this._frameSize;
         var w = __BrowserGetter.availWidth(cc.game.frame);
         var h = __BrowserGetter.availHeight(cc.game.frame);
         var isLandscape = w >= h;
 
-        if (CC_EDITOR || !this._screenChange || !this._orientationChanging || !cc.sys.isMobile ||
-            (isLandscape && this._orientation & cc.macro.ORIENTATION_LANDSCAPE) ||
+        if (CC_EDITOR || !this._orientationChanging || !cc.sys.isMobile ||
+            (isLandscape && this._orientation & cc.macro.ORIENTATION_LANDSCAPE) || 
             (!isLandscape && this._orientation & cc.macro.ORIENTATION_PORTRAIT)) {
             locFrameSize.width = w;
             locFrameSize.height = h;
@@ -335,9 +331,11 @@ var View = cc._Class.extend({
             cc.container.style.transformOrigin = '0px 0px 0px';
             this._isRotated = true;
         }
-        setTimeout(function () {
-            cc.view._orientationChanging = false;
-        }, 1000);
+        if (this._orientationChanging) {
+            setTimeout(function () {
+                cc.view._orientationChanging = false;
+            }, 1000);
+        }
     },
 
     // hack
@@ -735,7 +733,9 @@ var View = cc._Class.extend({
 
         // Permit to re-detect the orientation of device.
         this._orientationChanging = true;
-        this._initFrameSize();
+        // If resizing, then frame size is already initialized, this logic should be improved
+        if (!this._resizing)
+            this._initFrameSize();
 
         if (!policy) {
             cc.logID(2201);
@@ -1049,7 +1049,7 @@ cc.ContainerStrategy = cc._Class.extend(/** @lends cc.ContainerStrategy# */{
 
     _setupContainer: function (view, w, h) {
         var locCanvas = cc.game.canvas, locContainer = cc.game.container;
-        if (cc.sys.isMobile) {
+        if (cc.sys.os === cc.sys.OS_ANDROID) {
             document.body.style.width = (view._isRotated ? h : w) + 'px';
             document.body.style.height = (view._isRotated ? w : h) + 'px';
         }
