@@ -411,6 +411,7 @@ var Label = cc.Class({
                 if(CC_EDITOR) {
                     if(!value && this._isSystemFontUsed && this._userDefinedFont) {
                         this.font = this._userDefinedFont;
+                        this.spacingX = this._spacingX;
                         return;
                     }
                 }
@@ -435,6 +436,20 @@ var Label = cc.Class({
             readonly: true,
             visible: true,
             animatable: false
+        },
+
+        _spacingX: 0,
+        spacingX: {
+            get: function() {
+                return this._spacingX;
+            },
+            set: function(value) {
+                this._spacingX = value;
+                if (this._sgNode) {
+                    this._sgNode.setSpacingX(this.spacingX);
+                    this._updateNodeSize();
+                }
+            }
         }
 
     },
@@ -501,6 +516,9 @@ var Label = cc.Class({
         sgNode.enableWrapText( this._enableWrapText );
         sgNode.setLineHeight(this._lineHeight);
         sgNode.setString(this.string);
+        if (this.font instanceof cc.BitmapFont) {
+            sgNode.setSpacingX(this.spacingX);
+        }
         if (CC_EDITOR) {
             this._userDefinedFontSize = this.fontSize;
             this._userDefinedFont = this.font;
